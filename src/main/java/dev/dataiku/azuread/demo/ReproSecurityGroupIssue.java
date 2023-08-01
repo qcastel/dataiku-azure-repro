@@ -59,6 +59,16 @@ public class ReproSecurityGroupIssue {
 
         DirectoryObjectCollectionPage initialPage = user.transitiveMemberOf;
         do {
+            System.out.println("For troubleshooting, lets display all the directory objects linked to the user");
+            initialPage.getCurrentPage().forEach(d -> {
+                String directoryName = d.id;
+                if (d.additionalDataManager() != null && d.additionalDataManager().get("displayName") != null) {
+                    directoryName = d.id + " / " + d.additionalDataManager().get("displayName").getAsString();
+                } else if (d instanceof Group){
+                    directoryName = d.id + " / " + ((Group) d).displayName;
+                }
+                System.out.println("- directory object " + directoryName + ": " + d.oDataType);
+            });
             System.out.println("Groups:");
             initialPage.getCurrentPage().stream()
                     .filter(d -> d.oDataType.equals("#microsoft.graph.group"))
