@@ -18,6 +18,8 @@ import com.microsoft.graph.models.Group;
 import com.microsoft.graph.models.User;
 import com.microsoft.graph.requests.DirectoryObjectCollectionPage;
 import com.microsoft.graph.requests.DirectoryObjectCollectionRequestBuilder;
+import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesPage;
+import com.microsoft.graph.requests.DirectoryObjectCollectionWithReferencesRequestBuilder;
 import com.microsoft.graph.requests.GraphServiceClient;
 import okhttp3.OkHttpClient;
 import okhttp3.Request;
@@ -77,6 +79,30 @@ public class ReproSecurityGroupIssue {
             DirectoryObjectCollectionRequestBuilder nextPage = initialPage.getNextPage();
             initialPage = nextPage == null ? null : nextPage.buildRequest().get();
         } while (initialPage != null);
+
+        DirectoryObjectCollectionWithReferencesPage transitiveMemberOf = graphClient.users(user.id).transitiveMemberOf()
+                .buildRequest()
+                .get();
+        do {
+            System.out.println("For troubleshooting, directly get the transitive member of");
+            transitiveMemberOf.getCurrentPage().forEach(d -> {
+                String directoryName = d.id;
+                if (d.additionalDataManager() != null && d.additionalDataManager().get("displayName") != null) {
+                    directoryName = d.id + " / " + d.additionalDataManager().get("displayName").getAsString();
+                } else if (d instanceof Group){
+                    directoryName = d.id + " / " + ((Group) d).displayName;
+                }
+                System.out.println("- directory object " + directoryName + ": " + d.oDataType);
+            });
+            System.out.println("Groups:");
+            transitiveMemberOf.getCurrentPage().stream()
+                    .filter(d -> d.oDataType.equals("#microsoft.graph.group"))
+                    .map(d -> ((Group) d).displayName)
+                    .forEach(g -> System.out.println("- " + g));
+            DirectoryObjectCollectionWithReferencesRequestBuilder nextPage = transitiveMemberOf.getNextPage();
+            transitiveMemberOf = nextPage == null ? null : nextPage.buildRequest().get();
+        } while (transitiveMemberOf != null);
+
     }
     static TrustManager TRUST_ALL_CERTS = new X509TrustManager() {
         @Override
